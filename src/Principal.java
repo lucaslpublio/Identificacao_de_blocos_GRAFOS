@@ -1,146 +1,119 @@
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.TreeSet;
+import java.util.Comparator;
 
 class Grafo {
-    private int V;
-    private ArrayList<Integer>[] adjacente;
-    Set<Integer> articulacoes = new HashSet<>();
+    private int V; // Número de vértices
+    private ArrayList<ArrayList<Integer>> adj; // Lista de adjacências
 
     Grafo(int v) {
         V = v;
-        adjacente = new ArrayList[v];
-        for (int i = 0; i < v; ++i)
-            adjacente[i] = new ArrayList<Integer>();
+        adj = new ArrayList<>(V);
+        for (int i = 0; i < V; ++i)
+            adj.add(new ArrayList<>());
     }
 
+    // Função para adicionar uma aresta ao grafo
     void adicionaAresta(int v, int w) {
-        adjacente[v].add(w);
-        adjacente[w].add(v);
+        adj.get(v).add(w);
+        adj.get(w).add(v);
     }
 
-    void DFS(int u, boolean visitado[], int pai, int baixo[], int desc[], List<Integer> bloco) {
-        visitado[u] = true;
-        bloco.add(u);
+    // Função de utilidade para verificar se existe um ciclo
+    // a partir do vértice v
+    private void isCicloUtil(int v, boolean[] visitados, int pai, ArrayList<Integer> cicloAtual, HashSet<HashSet<Integer>> ciclos) {
+        // Marca o vértice atual como visitado
+        visitados[v] = true;
+        cicloAtual.add(v);
 
-        for (Integer v : adjacente[u]) {
-            if (!visitado[v]) {
-                DFS(v, visitado, u, baixo, desc, bloco);
+        // Recurra para todos os vértices adjacentes ao vértice atual
+        for (Integer i : adj.get(v)) {
+            // Se o vértice adjacente não foi visitado, então o visite
+            if (!visitados[i]) {
+                isCicloUtil(i, visitados, v, cicloAtual, ciclos);
             }
-        }
-    }
-
-    List<List<Integer>> encontrarBlocos() {
-        boolean visitado[] = new boolean[V];
-        int desc[] = new int[V];
-        int baixo[] = new int[V];
-        int pai[] = new int[V];
-        List<List<Integer>> blocos = new ArrayList<>();
-
-        for (int i = 0; i < V; ++i) {
-            pai[i] = -1;
-            visitado[i] = false;
-        }
-
-        for (int i = 0; i < V; ++i) {
-            if (!visitado[i]) {
-                List<Integer> bloco = new ArrayList<>();
-                DFS(i, visitado, -1, baixo, desc, bloco);
-                blocos.add(bloco);
+            // Se o vértice adjacente é visitado e não é o pai do vértice atual,
+            // então há um ciclo no grafo
+            else if (i != pai) {
+                // Encontrou um ciclo, adiciona ao HashSet de ciclos
+                ArrayList<Integer> ciclo = new ArrayList<>(cicloAtual.subList(cicloAtual.indexOf(i), cicloAtual.size()));
+                ciclo.add(v);
+                ciclos.add(new HashSet<>(ciclo));
             }
         }
 
-        return blocos;
+        cicloAtual.remove(cicloAtual.size() - 1);
+        visitados[v] = false;
     }
 
-    void encontrarArticulacoes() {
-        boolean visitado[] = new boolean[V];
-        int desc[] = new int[V];
-        int baixo[] = new int[V];
-        int pai[] = new int[V];
-        int tempo = 0;
+    // Função principal para verificar se o grafo contém um ciclo
+    ArrayList<ArrayList<Integer>> encontraCiclos() {
+        // Marca todos os vértices como não visitados
+        boolean[] visitados = new boolean[V];
+        Arrays.fill(visitados, false);
 
-        for (int i = 0; i < V; ++i) {
-            pai[i] = -1;
-            visitado[i] = false;
-        }
+        // HashSet para armazenar todos os ciclos encontrados
+        HashSet<HashSet<Integer>> ciclosSet = new HashSet<>();
 
-        for (int i = 0; i < V; ++i) {
-            if (!visitado[i]) {
-                encontrarArticulacoesUtil(i, visitado, pai, baixo, desc, tempo);
+        // Lista temporária para armazenar o ciclo atual sendo explorado
+        ArrayList<Integer> cicloAtual = new ArrayList<>();
+
+        // Chama a função de utilidade recursiva para encontrar todos os ciclos
+        for (int u = 0; u < V; u++)
+            if (!visitados[u])
+                isCicloUtil(u, visitados, -1, cicloAtual, ciclosSet);
+
+        // Converter HashSet para TreeSet com comparador personalizado para garantir ordenação pela soma
+        TreeSet<ArrayList<Integer>> ciclosOrdenados = new TreeSet<>(new Comparator<ArrayList<Integer>>() {
+            @Override
+            public int compare(ArrayList<Integer> ciclo1, ArrayList<Integer> ciclo2) {
+                int sum1 = somaDoCiclo(ciclo1);
+                int sum2 = somaDoCiclo(ciclo2);
+                return Integer.compare(sum1, sum2);
             }
+        });
+        for (HashSet<Integer> cicloSet : ciclosSet) {
+            ArrayList<Integer> ciclo = new ArrayList<>(cicloSet);
+            ciclosOrdenados.add(ciclo);
         }
+
+        // Converter TreeSet para ArrayList
+        ArrayList<ArrayList<Integer>> ciclos = new ArrayList<>(ciclosOrdenados);
+
+        return ciclos;
     }
 
-    void encontrarArticulacoesUtil(int u, boolean visitado[], int pai[], int baixo[], int desc[], int tempo) {
-        int filhos = 0;
-        visitado[u] = true;
-        desc[u] = baixo[u] = ++tempo;
-
-        for (Integer v : adjacente[u]) {
-            if (!visitado[v]) {
-                filhos++;
-                pai[v] = u;
-                encontrarArticulacoesUtil(v, visitado, pai, baixo, desc, tempo);
-
-                baixo[u] = Math.min(baixo[u], baixo[v]);
-
-                if (pai[u] == -1 && filhos > 1) {
-                    articulacoes.add(u);
-                }
-                if (pai[u] != -1 && baixo[v] >= desc[u]) {
-                    articulacoes.add(u);
-                }
-            } else if (v != pai[u]) {
-                baixo[u] = Math.min(baixo[u], desc[v]);
-            }
+    // Função para encontrar a soma dos vértices em um ciclo
+    private int somaDoCiclo(ArrayList<Integer> ciclo) {
+        int sum = 0;
+        for (int vertice : ciclo) {
+            sum += vertice;
         }
+        return sum;
     }
-}
 
-public class Principal {
+    // Método de teste
     public static void main(String args[]) {
-        Grafo g = new Grafo(12);
+        Grafo g = new Grafo(7);
         g.adicionaAresta(0, 1);
+        g.adicionaAresta(0, 2);
+        g.adicionaAresta(0, 6);
+        g.adicionaAresta(0, 5);
+        g.adicionaAresta(0, 3);
+        g.adicionaAresta(0, 4);
         g.adicionaAresta(1, 2);
-        g.adicionaAresta(2, 0);
-        g.adicionaAresta(1, 3);
+        g.adicionaAresta(5, 6);
         g.adicionaAresta(3, 4);
-        g.adicionaAresta(4, 5);
-        g.adicionaAresta(5, 3);
-        g.adicionaAresta(6, 7);
-        g.adicionaAresta(7, 8);
-        g.adicionaAresta(8, 6);
-        g.adicionaAresta(9, 10);
-        g.adicionaAresta(10, 11);
-        g.adicionaAresta(11, 9);
-        g.adicionaAresta(1, 9);
 
-        long startTime = System.nanoTime();
-        List<List<Integer>> blocos = g.encontrarBlocos();
-        g.encontrarArticulacoes();
-        long endTime = System.nanoTime();
-
-        imprimirBlocos(blocos);
-        System.out.println("Articulações encontradas: " + g.articulacoes);
-        long duration = (endTime - startTime);
-        System.out.println("Tempo de execução: " + duration + " nanossegundos");
-    }
-
-    public static void imprimirBlocos(List<List<Integer>> blocos) {
-        for (int i = 0; i < blocos.size(); i++) {
-            List<Integer> bloco = blocos.get(i);
-            System.out.print("Bloco " + (i + 1) + ": composto");
-
-            if (bloco.size() == 1) {
-                System.out.println(" apenas pelo vértice " + bloco.get(0) + ".");
-            } else {
-                System.out.print(" pelos vértices ");
-                for (int j = 0; j < bloco.size(); j++) {
-                    System.out.print(bloco.get(j));
-                    if (j < bloco.size() - 1) {
-                        System.out.print(" - ");
-                    }
-                }
-                System.out.println(".");
+        ArrayList<ArrayList<Integer>> ciclos = g.encontraCiclos();
+        if (ciclos.isEmpty()) {
+            System.out.println("O grafo não contém ciclos.");
+        } else {
+            System.out.println("Blocos encontrados:");
+            for (ArrayList<Integer> ciclo : ciclos) {
+                System.out.println(ciclo);
             }
         }
     }
