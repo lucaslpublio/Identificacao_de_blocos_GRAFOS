@@ -94,6 +94,75 @@ class Grafo {
         return sum;
     }
 
+    // Função de utilidade para encontrar pontos de articulação
+    void encontraArticulacoes() {
+        // Inicializa o vetor de visitados
+        boolean[] visitados = new boolean[V];
+        // Inicializa o vetor de descobertas
+        int[] descoberta = new int[V];
+        // Inicializa o vetor de baixos
+        int[] baixo = new int[V];
+        // Inicializa o vetor de pais
+        int[] pai = new int[V];
+        // Inicializa o contador de tempo
+        int tempo = 0;
+
+        // Inicializa o vetor de pontos de articulação
+        boolean[] articulacao = new boolean[V];
+
+        // Faz uma busca em profundidade a partir do vértice 0 para encontrar os pontos de articulação
+        for (int i = 0; i < V; i++) {
+            if (!visitados[i]) {
+                dfsArticulacao(i, visitados, descoberta, baixo, pai, articulacao, tempo);
+            }
+        }
+
+        // Imprime os pontos de articulação
+        System.out.println("Pontos de articulação encontrados:");
+        for (int i = 0; i < V; i++) {
+            if (articulacao[i]) {
+                System.out.println(i);
+            }
+        }
+    }
+
+    // Função de busca em profundidade para encontrar os pontos de articulação
+    private void dfsArticulacao(int u, boolean[] visitados, int[] descoberta, int[] baixo, int[] pai, boolean[] articulacao, int tempo) {
+        // Marca o vértice como visitado
+        visitados[u] = true;
+
+        // Inicializa a descoberta e o baixo do vértice
+        descoberta[u] = baixo[u] = ++tempo;
+
+        // Conta os filhos na árvore de busca em profundidade
+        int filhos = 0;
+
+        // Percorre todos os vértices adjacentes ao vértice atual
+        for (int v : adj.get(u)) {
+            // Se v não foi visitado ainda, então é uma árvore de busca em profundidade
+            if (!visitados[v]) {
+                filhos++;
+                pai[v] = u;
+                dfsArticulacao(v, visitados, descoberta, baixo, pai, articulacao, tempo);
+
+                // Verifica se o subárvore enraizada em v tem conexão com um dos antecessores de u
+                baixo[u] = Math.min(baixo[u], baixo[v]);
+
+                // Se u é um ponto de articulação e v não está conectado com um dos antecessores de u
+                if (pai[u] == -1 && filhos > 1) {
+                    articulacao[u] = true;
+                }
+                if (pai[u] != -1 && baixo[v] >= descoberta[u]) {
+                    articulacao[u] = true;
+                }
+            }
+            // Atualiza o baixo de u para considerar o vértice adjacente v
+            else if (v != pai[u]) {
+                baixo[u] = Math.min(baixo[u], descoberta[v]);
+            }
+        }
+    }
+
     // Método de teste
     public static void main(String args[]) {
         Grafo g = new Grafo(7);
@@ -107,14 +176,19 @@ class Grafo {
         g.adicionaAresta(5, 6);
         g.adicionaAresta(3, 4);
 
+        // Encontra e imprime os ciclos
         ArrayList<ArrayList<Integer>> ciclos = g.encontraCiclos();
         if (ciclos.isEmpty()) {
             System.out.println("O grafo não contém ciclos.");
         } else {
-            System.out.println("Blocos encontrados:");
+            System.out.println("Ciclos encontrados:");
             for (ArrayList<Integer> ciclo : ciclos) {
                 System.out.println(ciclo);
             }
         }
+
+        // Encontra e imprime os pontos de articulação
+        g.encontraArticulacoes();
     }
 }
+
