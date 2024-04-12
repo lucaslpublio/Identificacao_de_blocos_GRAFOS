@@ -94,87 +94,65 @@ class Grafo {
         return sum;
     }
 
-    // Função de utilidade para encontrar pontos de articulação
     void encontraArticulacoes() {
-        // Inicializa o vetor de visitados
-        boolean[] visitados = new boolean[V];
-        // Inicializa o vetor de descobertas
-        int[] descoberta = new int[V];
-        // Inicializa o vetor de baixos
-        int[] baixo = new int[V];
-        // Inicializa o vetor de pais
-        int[] pai = new int[V];
-        // Inicializa o contador de tempo
-        int tempo = 0;
+        boolean[] visited = new boolean[V];
+        int[] disc = new int[V]; // Tempo de descoberta
+        int[] low = new int[V]; // Menor tempo de descoberta alcancavel
+        int[] parent = new int[V]; // Vertice pai na arvore DFS
+        int time = 0;
 
-        // Inicializa o vetor de pontos de articulação
-        boolean[] articulacao = new boolean[V];
+        Arrays.fill(parent, -1);
 
-        // Faz uma busca em profundidade a partir do vértice 0 para encontrar os pontos de articulação
         for (int i = 0; i < V; i++) {
-            if (!visitados[i]) {
-                dfsArticulacao(i, visitados, descoberta, baixo, pai, articulacao, tempo);
-            }
-        }
-
-        // Imprime os pontos de articulação
-        System.out.println("Pontos de articulação encontrados:");
-        for (int i = 0; i < V; i++) {
-            if (articulacao[i]) {
-                System.out.println(i);
+            if (!visited[i]) {
+                dfsArticulacao(i, visited, disc, low, parent,time);
             }
         }
     }
 
-    // Função de busca em profundidade para encontrar os pontos de articulação
-    private void dfsArticulacao(int u, boolean[] visitados, int[] descoberta, int[] baixo, int[] pai, boolean[] articulacao, int tempo) {
-        // Marca o vértice como visitado
-        visitados[u] = true;
+    void dfsArticulacao(int u, boolean[] visited, int[] disc, int[] low, int[] parent, int time) {
+        visited[u] = true;
+        disc[u] = low[u] = ++time;
 
-        // Inicializa a descoberta e o baixo do vértice
-        descoberta[u] = baixo[u] = ++tempo;
+        int children = 0; // Contador de filhos na arvore DFS
 
-        // Conta os filhos na árvore de busca em profundidade
-        int filhos = 0;
-
-        // Percorre todos os vértices adjacentes ao vértice atual
         for (int v : adj.get(u)) {
-            // Se v não foi visitado ainda, então é uma árvore de busca em profundidade
-            if (!visitados[v]) {
-                filhos++;
-                pai[v] = u;
-                dfsArticulacao(v, visitados, descoberta, baixo, pai, articulacao, tempo);
+            if (!visited[v]) {
+                children++;
+                parent[v] = u;
+                dfsArticulacao(v, visited, disc, low, parent, time);
 
-                // Verifica se o subárvore enraizada em v tem conexão com um dos antecessores de u
-                baixo[u] = Math.min(baixo[u], baixo[v]);
+                low[u] = Math.min(low[u], low[v]);
 
-                // Se u é um ponto de articulação e v não está conectado com um dos antecessores de u
-                if (pai[u] == -1 && filhos > 1) {
-                    articulacao[u] = true;
+                // Verifica se u e uma articulacao
+                if (parent[u] == -1 && children > 1) {
+                    System.out.println("Vertice de corte (Articulacao): " + u);
                 }
-                if (pai[u] != -1 && baixo[v] >= descoberta[u]) {
-                    articulacao[u] = true;
+                if (parent[u] != -1 && low[v] >= disc[u]) {
+                    System.out.println("Vertice de corte (Articulacao): " + u);
                 }
-            }
-            // Atualiza o baixo de u para considerar o vértice adjacente v
-            else if (v != pai[u]) {
-                baixo[u] = Math.min(baixo[u], descoberta[v]);
+            } else if (v != parent[u]) {
+                low[u] = Math.min(low[u], disc[v]);
             }
         }
     }
 
     // Método de teste
     public static void main(String args[]) {
-        Grafo g = new Grafo(7);
+        Grafo g = new Grafo(10);
         g.adicionaAresta(0, 1);
-        g.adicionaAresta(0, 2);
-        g.adicionaAresta(0, 6);
-        g.adicionaAresta(0, 5);
-        g.adicionaAresta(0, 3);
-        g.adicionaAresta(0, 4);
+        g.adicionaAresta(1, 3);
         g.adicionaAresta(1, 2);
+        g.adicionaAresta(2, 3);
+        g.adicionaAresta(3, 0);
+        g.adicionaAresta(0, 4);
+        g.adicionaAresta(4, 5);
         g.adicionaAresta(5, 6);
-        g.adicionaAresta(3, 4);
+        g.adicionaAresta(6, 7);
+        g.adicionaAresta(7, 8);
+        g.adicionaAresta(8, 9);
+        g.adicionaAresta(9, 6);
+
 
         // Encontra e imprime os ciclos
         ArrayList<ArrayList<Integer>> ciclos = g.encontraCiclos();
@@ -187,8 +165,7 @@ class Grafo {
             }
         }
 
-        // Encontra e imprime os pontos de articulação
+        // Encontra e imprime os pontos de articulação e seus blocos associados
         g.encontraArticulacoes();
     }
 }
-
